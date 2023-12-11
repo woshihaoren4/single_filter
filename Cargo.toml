@@ -1,0 +1,13 @@
+[workspace]
+members = ["server","sgflt"]
+
+[workspace.package]
+edition = "2021"
+authors = ["Teshin <1443965173@qq.com>"]
+repository = "https://github.com/woshihaoren4/single_filter"
+keywords = ["single_filter"]
+description = "Duplicate value filtering"
+license = "MIT"
+readme = "README.md"
+
+[workspace.dependencies]
