@@ -12,3 +12,9 @@ readme.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-trait.workspace = true
+anyhow.workspace = true
+redis.workspace = true
+wd_log.workspace = true
+tokio.workspace = true
+wd_tools={worksapce = true,features = ["uid","ptr"]}
