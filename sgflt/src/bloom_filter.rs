@@ -1,17 +1,20 @@
 use std::collections::hash_map::{DefaultHasher, RandomState};
 use std::hash::{BuildHasher, Hash, Hasher};
-use crate::{Bitmap, SingleKeyFilter};
+use wd_tools::PFErr;
+use crate::{Bitmap, FiltersInfo, SingleKeyFilter};
 
 pub struct BasicBloomFilter {
     code: String,
-    bitmap:Box<dyn Bitmap+Send+Sync+'static>,
+    info:Box<dyn FiltersInfo + 'static>,
+    bitmap:Box<dyn Bitmap+'static>,
     optimal_m: usize,
     optimal_k: u32,
+    items_count: usize,
     hashes: [DefaultHasher; 2],
 }
 
 impl BasicBloomFilter{
-    pub async fn new<I:Into<String>,B:Bitmap+Send+Sync+'static>(code:I,bitmap:B,items_count: usize, fp_rate: f64)->Self{
+    pub fn new<I:Into<String>,B:Bitmap+'static,F: FiltersInfo +'static>(code:I, info:F, bitmap:B, items_count: usize, fp_rate: f64) ->Self{
         let optimal_m = Self::bitmap_size(items_count, fp_rate);
         let optimal_k = Self::optimal_k(fp_rate);
         let hashes = [
@@ -19,15 +22,20 @@ impl BasicBloomFilter{
             RandomState::new().build_hasher(),
         ];
         let code = code.into();
-        let mut bitmap = Box::new(bitmap);
-        bitmap.init(code.clone());
+        let bitmap = Box::new(bitmap);
+        let info = Box::new(info);
         BasicBloomFilter {
             code,
             bitmap,
+            items_count,
+            info,
             optimal_m,
             optimal_k,
             hashes,
         }
+    }
+    pub async fn is_full(&self)->anyhow::Result<bool>{
+        Ok(self.info.count(self.code.clone()).await? >= self.items_count)
     }
     fn hash_kernel<T:Hash+Send+Sync+ ?Sized>(&self, item: &T) -> (u64, u64)
     {
@@ -57,12 +65,21 @@ impl BasicBloomFilter{
 #[async_trait::async_trait]
 impl SingleKeyFilter for BasicBloomFilter{
     async fn insert<KEY: Hash+Send+Sync+ ?Sized>(&self, item: &KEY) -> anyhow::Result<()> {
+        //先判断是不是满了
+        if self.is_full().await? {
+            return anyhow::anyhow!("the bloom[{}] cap[{}] is full",self.code,self.items_count).err()
+        }
+
         let (h1, h2) = self.hash_kernel(item);
 
         for k_i in 0..self.optimal_k {
             let index = self.get_index(h1, h2, k_i as u64);
 
             self.bitmap.set(index, true).await?;
+        }
+        //插入成功，添加一条记录
+        if let Err(e) = self.info.add(self.code.clone()).await {
+            wd_log::log_field("error",e).field("code",self.code.as_str()).warn("BasicBloomFilter.info add failed")
         }
         Ok(())
     }
