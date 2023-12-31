@@ -14,6 +14,6 @@ readme = "README.md"
 async-trait = "0.1.74"
 anyhow = "1.0.75"
 wd_log = "0.2.0"
-wd_tools = { version = "0.8.13",features = ["ptr","uid"] }
+wd_tools = {version = "0.9.0",features = ["ptr","uid","point-free","sync","time","md5"]}
 redis = { version = "0.24.0", features = ["cluster-async","tokio-rustls-comp"] }
 tokio = { version = "1.35.0",features = ["full"] }

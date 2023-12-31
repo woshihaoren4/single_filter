@@ -17,4 +17,6 @@ anyhow.workspace = true
 redis.workspace = true
 wd_log.workspace = true
 tokio.workspace = true
-wd_tools = {version = "0.8.13",features = ["ptr","uid","point-free"]}
+wd_tools.workspace = true
+log = "0.4.20"
+#wd_tools = {version = "0.8.13",features = ["ptr","uid","point-free","sync"]}
