@@ -173,7 +173,7 @@ impl FilterExpandStrategy for BloomExpandStrategy {
         };
         let size = self.strategy.chunk_size(index)?;
         let key = self.next_chunk_key(index, group.as_str());
-        let mut bloom = BasicBloomFilter::new(
+        let bloom = BasicBloomFilter::new(
             group,
             key,
             self.info.clone(),

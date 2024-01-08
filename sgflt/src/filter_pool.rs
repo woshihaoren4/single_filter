@@ -56,7 +56,7 @@ pub struct DefaultPoolImpl {
 }
 
 impl Pool<FilterGroup> for DefaultPoolImpl {
-    fn add(&self, group: &str, val: FilterGroup) {
+    fn add(&self, _group: &str, _val: FilterGroup) {
         //todo
     }
 

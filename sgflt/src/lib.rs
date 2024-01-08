@@ -16,7 +16,6 @@ use std::collections::{HashMap, HashSet};
 pub use util::*;
 
 use std::sync::Arc;
-use wd_tools::time::format::Item;
 
 // bitmap实现，是分布式实现消重的的重要抽象
 // 推荐bitmap命名方式 {{appid}}/{{group}}/{{timestamp}}

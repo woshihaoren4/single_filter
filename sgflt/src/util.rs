@@ -50,6 +50,6 @@ mod test {
         let mut hasher = generate_hasher("123");
 
         hasher.write("123".as_bytes());
-        let result = hasher.finish();
+        let _result = hasher.finish();
     }
 }

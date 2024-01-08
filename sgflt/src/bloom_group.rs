@@ -1,6 +1,5 @@
 use crate::{error::SgfitErr, FilterExpandStrategy, SingleKeyFilter};
 use std::collections::{HashMap, HashSet};
-use std::ops::Sub;
 use std::sync::Arc;
 use wd_tools::sync::Acl;
 use wd_tools::PFErr;
@@ -65,13 +64,13 @@ impl FilterGroup {
         Ok(result)
     }
     pub async fn insert(&self, keys: Vec<String>) -> anyhow::Result<()> {
-        'lp: for mut i in keys.into_iter() {
+        'lp: for i in keys.into_iter() {
             for _ in 0..self.try_max {
                 let chunk = self.get_last_chunk().await?;
                 if let Err(e) = chunk.insert(i.as_str()).await {
                     if let Some(se) = e.downcast_ref::<SgfitErr>() {
-                        if let SgfitErr::ChunkFull(_) = se {
-                            self.try_extend().await?;
+                        match se {
+                            SgfitErr::ChunkFull(_) => self.try_extend().await?,
                         }
                     }
                 }
@@ -100,7 +99,7 @@ impl FilterGroup {
         let mut map: HashMap<String, HashSet<usize>> = HashMap::new();
         let mut total: HashMap<String, usize> = HashMap::new();
         let mut growth: HashMap<String, usize> = HashMap::new();
-        'lp: for mut i in keys.into_iter() {
+        'lp: for i in keys.into_iter() {
             for _ in 0..self.try_max {
                 let chunk = self.get_last_chunk().await?;
                 let result = chunk.pre_insert(i.as_str(), &mut total, &mut growth).await;
@@ -109,9 +108,11 @@ impl FilterGroup {
                     // 如果错误是区块已满，则尝试扩容
                     Err(e) => {
                         if let Some(se) = e.downcast_ref::<SgfitErr>() {
-                            if let SgfitErr::ChunkFull(_) = se {
-                                self.try_extend().await?;
-                                continue;
+                            match se {
+                                SgfitErr::ChunkFull(_) => {
+                                    self.try_extend().await?;
+                                    continue;
+                                }
                             }
                         }
                         return Err(e);

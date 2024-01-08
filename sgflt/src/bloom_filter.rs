@@ -1,10 +1,10 @@
 use crate::error::SgfitErr;
 use crate::{generate_hasher, Bitmap, FiltersInfo, SingleKeyFilter};
-use std::collections::hash_map::{DefaultHasher, RandomState};
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
-use std::hash::{BuildHasher, Hash, Hasher};
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use wd_tools::{PFErr, MD5};
+use wd_tools::PFErr;
 
 pub struct BasicBloomFilter {
     group: String,
@@ -92,36 +92,6 @@ impl BasicBloomFilter {
             result.push(index);
         }
         Ok(result)
-    }
-    async fn raw_insert(&self, item: &str, batch: bool) -> anyhow::Result<Vec<usize>> {
-        //先判断是不是满了
-        if self.is_full().await? {
-            return anyhow::Error::new(SgfitErr::new_chunk_full(self.items_count)).err();
-        }
-
-        let (h1, h2) = self.hash_kernel(item);
-
-        let bits = if batch {
-            self.sync_mode_insert(h1, h2).await?
-        } else {
-            for k_i in 0..self.optimal_k {
-                let index = self.get_index(h1, h2, k_i as u64);
-                self.bitmap.set(self.code.as_str(), index, true).await?;
-            }
-            vec![]
-        };
-
-        //插入成功，添加一条记录
-        if let Err(e) = self
-            .info
-            .add(self.group.as_str(), self.code.as_str(), 1)
-            .await
-        {
-            wd_log::log_field("error", e)
-                .field("code", self.code.as_str())
-                .warn("BasicBloomFilter.info add failed")
-        }
-        Ok(bits)
     }
     async fn raw_contain(&self, item: &str, bits: Option<&Vec<u8>>) -> anyhow::Result<bool> {
         let (h1, h2) = self.hash_kernel(item);
