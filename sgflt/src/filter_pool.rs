@@ -19,17 +19,26 @@ impl FiltersPool {
 }
 
 impl FiltersPool {
-    pub async fn contain(&self, group: &str, keys: Vec<String>) -> anyhow::Result<Vec<bool>> {
+    pub async fn contain(&self, group: &str, key: String) -> anyhow::Result<bool> {
         let fg = self.pool.get(group);
-        // fixme
-        let _ = fg.extend().await;
-        fg.contain(keys).await
+        let _ = fg.try_extend().await;
+        let res = fg.contain(vec![key]).await?;
+        Ok(res[0])
     }
-    pub async fn insert(&self, group: &str, keys: Vec<String>) -> anyhow::Result<()> {
+    pub async fn insert(&self, group: &str, keys: String) -> anyhow::Result<()> {
         let fg = self.pool.get(group);
-        // fixme
-        let _ = fg.extend().await;
-        fg.insert(keys).await
+        let _ = fg.try_extend().await;
+        fg.insert(vec![keys]).await
+    }
+    pub async fn batch_contain(&self, group: &str, keys: Vec<String>) -> anyhow::Result<Vec<bool>> {
+        let fg = self.pool.get(group);
+        let _ = fg.try_extend().await;
+        fg.batch_contain(keys).await
+    }
+    pub async fn batch_insert(&self, group: &str, keys: Vec<String>) -> anyhow::Result<()> {
+        let fg = self.pool.get(group);
+        let _ = fg.try_extend().await;
+        fg.batch_insert(keys).await
     }
 }
 

@@ -51,6 +51,5 @@ mod test {
 
         hasher.write("123".as_bytes());
         let result = hasher.finish();
-        println!("--->{}", result)
     }
 }

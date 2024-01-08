@@ -131,12 +131,7 @@ impl BloomExpandStrategy {
     fn next_chunk_key(&self, index: usize, group: &str) -> String {
         let ts = wd_tools::time::utc_timestamp();
         let ts = ts - ts % self.timestamp_size;
-        format!(
-            "{}_{}_{}",
-            assembly_prefix(self.appid.as_str(), group),
-            index,
-            ts
-        )
+        format!("{}_{}_{}", group, ts, index)
     }
 }
 
@@ -146,13 +141,13 @@ impl FilterExpandStrategy for BloomExpandStrategy {
         &self,
         group: &str,
     ) -> anyhow::Result<Vec<Arc<dyn SingleKeyFilter>>> {
-        let items = self.info.list(group).await?;
+        let group = assembly_prefix(self.appid.as_str(), group);
+        let items = self.info.list(group.as_str()).await?;
         let mut list: Vec<Arc<dyn SingleKeyFilter>> = Vec::with_capacity(items.len());
         // fixme: chunk存才多扩容的情况，i应该根据k拆解得出
         for (i, (k, _)) in items.into_iter().enumerate() {
-            let group = assembly_prefix(self.appid.as_str(), group);
             let bloom = BasicBloomFilter::new(
-                group,
+                group.clone(),
                 k,
                 self.info.clone(),
                 self.bitmap.clone(),
@@ -164,20 +159,29 @@ impl FilterExpandStrategy for BloomExpandStrategy {
         list.ok()
     }
 
-    async fn expand_chunk(&self, group: &str) -> anyhow::Result<Arc<dyn SingleKeyFilter>> {
-        let current_list = self.info.list(group).await?;
-        let size = self.strategy.chunk_size(current_list.len())?;
-        let key = self.next_chunk_key(current_list.len(), group);
+    async fn expand_chunk(
+        &self,
+        group: &str,
+        index: isize,
+    ) -> anyhow::Result<Arc<dyn SingleKeyFilter>> {
         let group = assembly_prefix(self.appid.as_str(), group);
-        let bloom: Arc<dyn SingleKeyFilter> = BasicBloomFilter::new(
+        let current_list = self.info.list(group.as_str()).await?;
+        let index = if index <= 0 {
+            current_list.len()
+        } else {
+            index as usize
+        };
+        let size = self.strategy.chunk_size(index)?;
+        let key = self.next_chunk_key(index, group.as_str());
+        let mut bloom = BasicBloomFilter::new(
             group,
             key,
             self.info.clone(),
             self.bitmap.clone(),
             size,
             self.fp_rate,
-        )
-        .arc();
+        );
+        let bloom: Arc<dyn SingleKeyFilter> = bloom.arc();
         bloom.ok()
     }
 }

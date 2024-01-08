@@ -1,7 +1,7 @@
 use crate::{Bitmap, FiltersInfo};
 use redis::cluster::ClusterClient;
 use redis::{AsyncCommands, Client, IntoConnectionInfo};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use wd_tools::PFOk;
 
 #[derive(Clone)]
@@ -115,6 +115,58 @@ impl Bitmap for BitmapRedis {
             }
         };
     }
+
+    async fn mul_set(&self, key: &str, list: HashSet<usize>) -> anyhow::Result<()> {
+        return match self.client {
+            RedisClient::CLUSTER(ref clu) => {
+                let mut conn = clu.get_async_connection().await?;
+                let result: Option<Vec<u8>> = conn.get(key).await?;
+                let mut buf = if let Some(s) = result { s } else { vec![] };
+                for i in list {
+                    let l = i / 8;
+                    if l >= buf.len() {
+                        let mut avec = vec![0u8; l - buf.len() + 1];
+                        buf.append(&mut avec);
+                    }
+                    buf[l] |= (0x01 << (i % 8))
+                }
+                conn.set(key, buf).await?;
+                Ok(())
+            }
+            RedisClient::SINGLE(ref sin) => {
+                let mut conn = sin.get_async_connection().await?;
+                let result: Option<Vec<u8>> = conn.get(key).await?;
+                let mut buf = if let Some(s) = result { s } else { vec![] };
+                for i in list {
+                    let l = i / 8;
+                    if l >= buf.len() {
+                        let mut avec = vec![0u8; l - buf.len() + 1];
+                        buf.append(&mut avec);
+                    }
+                    buf[l] |= (0x01 << (i % 8))
+                }
+                conn.set(key, buf).await?;
+                Ok(())
+            }
+        };
+    }
+
+    async fn mul_get(&self, key: &str) -> anyhow::Result<Vec<u8>> {
+        return match self.client {
+            RedisClient::CLUSTER(ref clu) => {
+                let mut conn = clu.get_async_connection().await?;
+                let result: Option<Vec<u8>> = conn.get(key).await?;
+                let buf = if let Some(s) = result { s } else { vec![] };
+                Ok(buf)
+            }
+            RedisClient::SINGLE(ref sin) => {
+                let mut conn = sin.get_async_connection().await?;
+                let result: Option<Vec<u8>> = conn.get(key).await?;
+                let buf = if let Some(s) = result { s } else { vec![] };
+                Ok(buf)
+            }
+        };
+    }
 }
 
 #[derive(Clone)]
@@ -183,15 +235,15 @@ impl FiltersInfo for FilterInfoRedis {
         }
     }
 
-    async fn add(&self, group: &str, key: &str) -> anyhow::Result<()> {
+    async fn add(&self, group: &str, key: &str, count: usize) -> anyhow::Result<()> {
         match self.client {
             RedisClient::CLUSTER(ref clu) => {
                 let mut client = clu.get_async_connection().await?;
-                let _: isize = client.hincr(group, key, 1).await?;
+                let _: isize = client.hincr(group, key, count).await?;
             }
             RedisClient::SINGLE(ref sin) => {
                 let mut client = sin.get_async_connection().await?;
-                let _: isize = client.hincr(group, key, 1).await?;
+                let _: isize = client.hincr(group, key, count).await?;
             }
         }
         Ok(())
