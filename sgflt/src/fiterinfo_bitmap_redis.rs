@@ -128,7 +128,7 @@ impl Bitmap for BitmapRedis {
                         let mut avec = vec![0u8; l - buf.len() + 1];
                         buf.append(&mut avec);
                     }
-                    buf[l] |= 0x01 << (i % 8)
+                    buf[l] |= 0x80 >> (i % 8)
                 }
                 conn.set(key, buf).await?;
                 Ok(())
@@ -143,7 +143,7 @@ impl Bitmap for BitmapRedis {
                         let mut avec = vec![0u8; l - buf.len() + 1];
                         buf.append(&mut avec);
                     }
-                    buf[l] |= 0x01 << (i % 8)
+                    buf[l] |= 0x80 >> (i % 8)
                 }
                 conn.set(key, buf).await?;
                 Ok(())

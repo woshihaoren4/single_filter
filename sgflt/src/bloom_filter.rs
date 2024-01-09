@@ -1,10 +1,10 @@
 use crate::error::SgfitErr;
 use crate::{generate_hasher, Bitmap, FiltersInfo, SingleKeyFilter};
-use std::collections::hash_map::DefaultHasher;
+use std::collections::hash_map::{DefaultHasher};
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use wd_tools::PFErr;
+use wd_tools::{PFErr};
 
 pub struct BasicBloomFilter {
     group: String,
@@ -76,7 +76,7 @@ impl BasicBloomFilter {
             let i = index / 8;
             let offset = index % 8;
             if let Some(u) = bitmap.get(i) {
-                if u & (0x01 << offset) == 0 {
+                if u & (0x80 >> offset) == 0 {
                     return Ok(false);
                 }
             } else {

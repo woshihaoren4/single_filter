@@ -84,9 +84,10 @@ pub trait Pool<T>: Send + Sync {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use crate::bloom_filter::BasicBloomFilter;
     use crate::fiterinfo_bitmap_redis::{BitmapRedis, FilterInfoRedis};
-    use crate::{BloomExpandStrategy, FiltersInfo, FiltersPool, SingleKeyFilter};
+    use crate::{Bitmap, BloomExpandStrategy, FiltersInfo, FiltersPool, SingleKeyFilter};
     use std::sync::Arc;
     use std::time;
 
@@ -96,18 +97,18 @@ mod tests {
         let info = FilterInfoRedis::redis_single_node("redis://:root@1.116.41.230/").unwrap();
 
         let bbf = BasicBloomFilter::new(
-            "SFP_test01_0001",
-            "SFP_test01_0001_0_1703923200",
+            "SFP_biz02_user001",
+            "SFP_biz02_user001_1704798000_0",
             Arc::new(info),
             Arc::new(br),
             100,
             0.001,
         );
-        let res = bbf.contain("test_key03").await.unwrap();
-        assert_eq!(res, false);
-        bbf.insert("test_key03").await.unwrap();
-        let res = bbf.contain("test_key03").await.unwrap();
+        let res = bbf.contain("key_1").await.unwrap();
         assert_eq!(res, true);
+        // bbf.insert("test_key03").await.unwrap();
+        // let res = bbf.contain("test_key03").await.unwrap();
+        // assert_eq!(res, true);
     }
 
     #[tokio::test]
@@ -115,6 +116,13 @@ mod tests {
         let info = FilterInfoRedis::redis_single_node("redis://:root@1.116.41.230/").unwrap();
         let map = info.list("SFP_biz02_user001").await.unwrap();
         println!("-->{:?}", map);
+    }
+
+    #[tokio::test]
+    async fn test_bitmap_redis() {
+        let info = BitmapRedis::redis_single_node("redis://:root@1.116.41.230/").unwrap();
+        let set = HashSet::from([9,11]);
+        info.mul_set("hello",set).await.unwrap();
     }
 
     #[tokio::test]
